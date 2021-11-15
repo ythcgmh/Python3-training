@@ -1,0 +1,115 @@
+# -*- coding: utf-8 -*-
+
+output = "/Users/keikei/Desktop/yth/211116.vcf"
+Newfile = open(output, "w")
+
+Sample_file = "/Users/keikei/Desktop/yth/sample.csv"
+with open(Sample_file, "r") as csv : 
+    Sample = csv.read().split("\n")
+
+filepath = "/Users/keikei/Desktop/yth/Try_5WES.final.Recal.vcf"
+with open(filepath, "r") as vcf : 
+    ReadLine = vcf.readlines() 
+    Header=[]
+    Body=[] 
+
+    iN = 0
+    x = 0
+    for line in ReadLine: 
+        if "##" in line: 
+            if "##INFO=" in line: 
+                iN = x
+            x = x+1
+            Header.append(line.strip("\n").split("\t"))
+        else:
+            Body.append(line.strip("\n").split("\t"))
+
+    sample_index = []
+    for x in Sample[1:]:
+        index = Body[0].index(x)
+        sample_index.append(index)
+    
+    Total = range(len(Body[0]))
+
+    for Varian in Body[1:]: 
+        AltRange = range(len(Varian[4].split(","))+1)
+
+        Alt_maf = [] #control
+        Alt_MAF = [] #case
+        Alt_saf = [] #control
+        Alt_SAF = [] #case
+        for x in Total[9:]:
+            if x in sample_index:
+                Alt_MAF.append(Varian[x][0])
+                Alt_MAF.append(Varian[x][2])
+                Alt_SAF.append(Varian[x][:3])
+            else:
+                Alt_maf.append(Varian[x][0])
+                Alt_maf.append(Varian[x][2])
+                Alt_saf.append(Varian[x][:3])
+
+
+        maf_count = []
+        MAF_count = []
+        for n in AltRange:
+            maf_count.append(Alt_maf.count(str(n)))
+            MAF_count.append(Alt_MAF.count(str(n)))
+
+        maf_sum = sum(maf_count)
+        MAF_sum = sum(MAF_count)
+
+        maf = []
+        MAF = []
+        for n in maf_count[1:]:
+            if maf_sum > 0:
+                maf.append(round(n/maf_sum, 3))
+            else:
+                maf.append(".")
+        for n in MAF_count[1:]:
+            if MAF_sum > 0:
+                MAF.append(round(n/MAF_sum, 3))
+            else:
+                MAF.append(".")
+
+        saf_count = []
+        SAF_count = []
+        for n in AltRange[1:]:
+            x = 0
+            for a in Alt_saf:
+                if str(n) in a:
+                    x = x + 1
+            saf_count.append(x)
+            
+            x = 0
+            for a in Alt_SAF:
+                if str(n) in a:
+                    x = x + 1
+            SAF_count.append(x)
+
+        saf = []
+        SAF = []
+        S = len(Alt_saf)
+        for s in saf_count:
+            saf.append(round(s/S, 3))
+        S = len(Alt_SAF)
+        for s in SAF_count:
+            SAF.append(round(s/S, 3))
+
+        Insert_maf = ";maf=" + ",".join(str(x) for x in maf)
+        Insert_MAF = ";MAF=" + "," .join(str(x) for x in MAF)
+        Insert_saf = ";saf=" + ",".join(str(x) for x in saf)
+        Insert_SAF = ";SAF=" + "," .join(str(x) for x in SAF)
+        Varian[7] = Varian[7] + Insert_maf + Insert_MAF + Insert_saf + Insert_SAF
+
+    Header.insert(iN+1, "##INFO=<ID=MAF,Number=A,Type=Float,Description=case,by yth")
+    Header.insert(iN+1, "##INFO=<ID=maf,Number=A,Type=Float,Description=control,by yth")
+    Header.insert(iN+1, "##INFO=<ID=SAF,Number=A,Type=Float,Description=case,by yth")
+    Header.insert(iN+1, "##INFO=<ID=saf,Number=A,Type=Float,Description=control,by yth")
+
+    for x in Header:
+        Newfile.write("".join(x) + "\n")
+    for x in Body:
+        Newfile.write("\t".join(x) + "\n")
+
+
+Newfile.close()
